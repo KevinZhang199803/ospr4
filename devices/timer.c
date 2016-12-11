@@ -20,6 +20,9 @@
 /* Number of timer ticks since OS booted. */
 static int64_t ticks;
 
+/* List of sleeping thread */
+static struct list thread_sleep;
+
 /* Number of loops per timer tick.
    Initialized by timer_calibrate(). */
 static unsigned loops_per_tick;
@@ -37,6 +40,7 @@ timer_init (void)
 {
   pit_configure_channel (0, 2, TIMER_FREQ);
   intr_register_ext (0x20, timer_interrupt, "8254 Timer");
+  list_init(&thread_sleep);
 }
 
 /* Calibrates loops_per_tick, used to implement brief delays. */
@@ -84,16 +88,62 @@ timer_elapsed (int64_t then)
   return timer_ticks () - then;
 }
 
+/* Check whether sleeping thread should be waken*/
+void
+checkSleepingList (void)
+{
+	//struct list_elem *e;
+	struct thread *t;
+
+	while(!list_empty(&thread_sleep))
+	{
+		//struct thread *t = list_entry (e, struct thread, elem);
+		//e = list_front(&thread_sleep);
+		t = list_entry(list_front(&thread_sleep), struct thread,elem);
+		
+
+		if(t->wakeup_tick > ticks)
+			break;
+		else
+		{
+			list_pop_front(&thread_sleep);
+			thread_unblock(t);
+		}
+	}
+
+}
+
+/* Ordering thread by tick */
+bool
+lessTick(const struct list_elem* a, const struct list_elem *b, void* aux UNUSED)
+{
+	const struct thread* t = list_entry(a, struct thread, elem);
+	const struct thread* u = list_entry(b, struct thread, elem);
+
+	return t->wakeup_tick < u->wakeup_tick;
+}
+
+
 /* Sleeps for approximately TICKS timer ticks.  Interrupts must
    be turned on. */
 void
 timer_sleep (int64_t ticks) 
 {
-  int64_t start = timer_ticks ();
-
+  enum intr_level old_level;
+  struct thread *sleepedThread = thread_current();
   ASSERT (intr_get_level () == INTR_ON);
-  while (timer_elapsed (start) < ticks) 
-    thread_yield ();
+  old_level = intr_disable();
+
+  sleepedThread->wakeup_tick = timer_ticks() + ticks;
+
+  list_insert_ordered(&thread_sleep, &sleepedThread->elem, lessTick, NULL);
+  thread_block();
+
+  intr_set_level (old_level);
+// busy-waiting 
+/* int64_t start = timer_ticks ();
+   while (timer_elapsed (start) < ticks) 
+    thread_yield (); */
 }
 
 /* Sleeps for approximately MS milliseconds.  Interrupts must be
@@ -171,6 +221,7 @@ static void
 timer_interrupt (struct intr_frame *args UNUSED)
 {
   ticks++;
+  checkSleepingList();
   thread_tick ();
 }
 
