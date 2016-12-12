@@ -146,6 +146,30 @@ syscall_handler (struct intr_frame *f UNUSED)
 	munmap(arg[0]);
 	break;
       }
+    	case SYS_CHDIR:
+	{
+		get_arg(f, &arg[0], 1);
+		//TODO:: implement change directory
+		break;
+	}
+	case SYS_MKDIR:
+	{
+		get_arg(f, &arg[0], 1);
+		//TODO:: implement make directory
+		break;
+	}
+	case SYS_READDIR:
+	{
+		get_arg(f, &arg[0], 2);
+		//TODO:: implement read directory
+		break;
+	}
+	case SYS_ISDIR:
+	{
+		get_arg(f, &arg[0], 1);
+		//TODO:: implement checking directory
+		break;
+	}
     }
   unpin_ptr(f->esp);
 }
@@ -348,6 +372,30 @@ void close (int fd)
   lock_acquire(&filesys_lock);
   process_close_file(fd);
   lock_release(&filesys_lock);
+}
+
+bool chdir (const char *dir)
+{
+	//TODO
+	return false;
+}
+
+bool mkdir (const char *dir)
+{
+	//TODO
+	return false;
+}
+
+bool readdir (int fd, char name[READDIR_MAX_LEN +1])
+{
+	//TODO
+	return false;
+}
+
+bool isdir (int fd)
+{
+	//TODO
+	return false;
 }
 
 void check_write_permission (struct sup_page_entry *spte)
