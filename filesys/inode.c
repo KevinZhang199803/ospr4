@@ -327,7 +327,10 @@ inode_close (struct inode *inode)
 			free_map_release (inode->data.blocks[11], 1);
 		}
         }
-
+	else
+	{
+		block_write (fs_device, inode->sector, &inode->data);
+	}
       free (inode); 
     }
 }
@@ -412,6 +415,11 @@ inode_write_at (struct inode *inode, const void *buffer_, off_t size,
   if (inode->deny_write_cnt)
     return 0;
 
+	if (offset + size > inode->data.length)
+	{
+		inode_extend (inode, offset+size);
+	}
+
   while (size > 0) 
     {
       /* Sector to write, starting byte offset within sector. */
@@ -489,3 +497,93 @@ inode_length (const struct inode *inode)
 {
   return inode->data.length;
 }
+
+void
+inode_extend (struct inode *inode, off_t length)
+{
+	size_t sectors = bytes_to_sectors (inode->data.length);
+	size_t new_sectors = bytes_to_sectors (length) - sectors;
+
+	if (new_sectors == 0)
+	{
+		inode->data.length = length;	
+		return;
+	}
+	
+	static char zeros[BLOCK_SECTOR_SIZE];
+	int i = sectors;
+	while (i < 10)
+	{
+		free_map_allocate (1, &inode->data.blocks[i]);
+		block_write (fs_device, inode->data.blocks[i], zeros);
+		i++;
+		sectors++;
+		new_sectors--;
+		if (new_sectors == 0)
+		{
+			inode->data.length = length;
+			return;
+		}
+	}
+	int j = sectors - 10;
+	struct indirect_block indirect_block;
+	if(j == 0)
+		free_map_allocate (1, &inode->data.blocks[10]);
+	else
+		block_read (fs_device, inode->data.blocks[10], &indirect_block);
+	while (j < 128)
+	{
+		free_map_allocate (1, &indirect_block.blocks[j]);
+		block_write (fs_device, indirect_block.blocks[j], zeros);
+		j++;
+		sectors++;
+		new_sectors--;
+		if (new_sectors == 0)
+		{
+			inode->data.length = length;
+			block_write (fs_device, inode->data.blocks[10], &indirect_block);
+			return;
+		}
+	}
+	block_write (fs_device, inode->data.blocks[10], &indirect_block);
+	int k = (sectors - 138) / 128;
+	int l = (sectors - 138) % 128;
+	struct indirect_block first_block;
+	struct indirect_block second_block;
+	if (k == 0 && l == 0)
+		free_map_allocate (1, &inode->data.blocks[11]);
+	else
+		block_read (fs_device, inode->data.blocks[11], &first_block);
+	while (k < 128)
+	{
+		if (l == 0)
+			free_map_allocate (1, &first_block.blocks[k]);
+		else
+			block_read (fs_device, first_block.blocks[k], &second_block);
+		while (l < 128)
+		{
+			free_map_allocate (1, &second_block.blocks[l]);
+			block_write (fs_device, second_block.blocks[l], zeros);
+			l++;
+			new_sectors--;
+			if (new_sectors == 0)
+			{
+				break;
+			}
+		}
+		block_write (fs_device, first_block.blocks[k], &second_block);
+		k++;
+		l = 0;
+		if (new_sectors == 0)
+		{
+			inode->data.length = length;
+			block_write (fs_device, inode->data.blocks[11], &first_block);
+			return;
+		}
+	}
+	inode->data.length = length - new_sectors*(BLOCK_SECTOR_SIZE);
+	block_write (fs_device, inode->data.blocks[11], &first_block);
+	return;
+}
+
+
