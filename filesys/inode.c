@@ -6,6 +6,7 @@
 #include "filesys/filesys.h"
 #include "filesys/free-map.h"
 #include "threads/malloc.h"
+//#include "filesys/cache.h"
 
 /* Identifies an inode. */
 #define INODE_MAGIC 0x494e4f44
@@ -16,9 +17,11 @@ struct inode_disk
   {
    // block_sector_t start;               /* First data sector. */
     block_sector_t blocks[12];		/* 0-9: direct. 10: indirect. 11: 2 level indirect */
+    block_sector_t parent;
+    bool isdir;
     off_t length;                       /* File size in bytes. */
     unsigned magic;                     /* Magic number. */
-    uint32_t unused[114];               /* Not used. */
+    uint32_t unused[112];               /* Not used. */
   };
 
 struct indirect_block
@@ -95,7 +98,7 @@ inode_init (void)
    Returns true if successful.
    Returns false if memory or disk allocation fails. */
 bool
-inode_create (block_sector_t sector, off_t length)
+inode_create (block_sector_t sector, off_t length, bool isdir)
 {
   struct inode_disk *disk_inode = NULL;
   bool success = false;
@@ -112,6 +115,7 @@ inode_create (block_sector_t sector, off_t length)
       size_t sectors = bytes_to_sectors (length);
       disk_inode->length = length;
       disk_inode->magic = INODE_MAGIC;
+      disk_inode->isdir = isdir;
 	if (sectors == 0)
 		success = true;
 	static char zeros[BLOCK_SECTOR_SIZE];
@@ -584,6 +588,11 @@ inode_extend (struct inode *inode, off_t length)
 	inode->data.length = length - new_sectors*(BLOCK_SECTOR_SIZE);
 	block_write (fs_device, inode->data.blocks[11], &first_block);
 	return;
+}
+
+bool inode_isdir (const struct inode *inode)
+{
+	return inode->data.isdir;
 }
 
 

@@ -585,13 +585,31 @@ int process_add_file (struct file *f)
       return ERROR;
     }
   pf->file = f;
+  pf->dir = NULL;
+  pf->isdir = false;
   pf->fd = thread_current()->fd;
   thread_current()->fd++;
   list_push_back(&thread_current()->file_list, &pf->elem);
   return pf->fd;
 }
 
-struct file* process_get_file (int fd)
+int process_add_dir (struct dir *dir)
+{
+  struct process_file *pf = malloc(sizeof(struct process_file));
+  if (!pf)
+    {
+      return ERROR;
+    }
+  pf->dir = dir;
+  pf->file = NULL;
+  pf->isdir = true;
+  pf->fd = thread_current()->fd;
+  thread_current()->fd++;
+  list_push_back(&thread_current()->file_list, &pf->elem);
+  return pf->fd;
+}
+
+struct process_file* process_get_file (int fd)
 {
   struct thread *t = thread_current();
   struct list_elem *e;
@@ -602,7 +620,7 @@ struct file* process_get_file (int fd)
           struct process_file *pf = list_entry (e, struct process_file, elem);
           if (fd == pf->fd)
 	    {
-	      return pf->file;
+	      return pf;
 	    }
         }
   return NULL;
@@ -619,7 +637,10 @@ void process_close_file (int fd)
       struct process_file *pf = list_entry (e, struct process_file, elem);
       if (fd == pf->fd || fd == CLOSE_ALL)
 	{
-	  file_close(pf->file);
+	  if (pf->isdir)
+		dir_close(pf->dir);
+	  else 
+		file_close(pf->file);
 	  list_remove(&pf->elem);
 	  free(pf);
 	  if (fd != CLOSE_ALL)

@@ -217,6 +217,10 @@ thread_create (const char *name, int priority,
 
   // Add child process to child list
   t->parent = thread_tid();
+  if(thread_current()->cudir != NULL)
+	t->cudir = dir_reopen(thread_current()->cudir);
+  else
+	t->cudir = NULL;
   struct child_process *cp = add_child_process(t->tid);
   t->cp = cp;
 
@@ -499,6 +503,7 @@ init_thread (struct thread *t, const char *name, int priority)
   list_init(&t->child_list);
   t->cp = NULL;
   t->parent = NO_PARENT;
+  t->cudir = NULL;
 }
 
 /* Allocates a SIZE-byte frame at the top of thread T's stack and
