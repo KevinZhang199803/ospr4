@@ -438,13 +438,22 @@ bool chdir (const char *cmdline)
 		free(file_name);
 		return false;
 	}
-	else if(file_name == "." || (inode_get_inumber(dir_get_inode(dir))==ROOT_DIR_SECTOR && strlen(file_name) == 0))
+	else if(strcmp(file_name, "/") == 0 )
+	{
+ 		dir_close(dir);
+		dir = dir_open_root();
+                dir_close(thread_current()->cudir);
+		thread_current()->cudir = dir;
+		free(file_name);
+		return true;
+	}
+	else if(strcmp(file_name, ".") == 0 || (inode_get_inumber(dir_get_inode(dir))==ROOT_DIR_SECTOR && strlen(file_name) == 0))
 	{
 		thread_current()->cudir = dir;
 		free(file_name);	
 		return true;
 	}
-	else if(file_name == "..")
+	else if(strcmp(file_name, "..") ==0)
 	{
 		inode = inode_open(inode_get_parent(dir_get_inode(dir)));
 		if(inode == NULL)

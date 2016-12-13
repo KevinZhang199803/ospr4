@@ -68,12 +68,12 @@ struct dir* parse_dir(const char* name)
 		{
 			return NULL;
 		}
-		else if(ptoken == ".")
+		else if(strcmp(ptoken, ".")==0)
 		{
 			ptoken = token;
 			continue;
 		}
-		else if(ptoken == "..")
+		else if(strcmp(ptoken, "..")==0)
 		{	
 			if(dir != NULL)
 			{
@@ -133,7 +133,7 @@ filesys_create (const char *name, off_t initial_size, bool isdir)
 
 	if(name == NULL || file_name == NULL || dir == NULL)
 		return false;	
-	if(file_name == "." || file_name == "..")
+	if(strcmp(file_name, ".")==0 || strcmp(file_name, "..")==0)
 		return false;
 	
 	bool success = (dir != NULL
@@ -183,12 +183,12 @@ filesys_open (const char *name)
 	free(file_name);
 	return (struct file *)dir;
   }
-  else if(file_name == "." || (inode_get_inumber(dir_get_inode(dir))==ROOT_DIR_SECTOR && strlen(file_name) == 0))
+  else if(strcmp(file_name, ".") == 0 || (inode_get_inumber(dir_get_inode(dir))==ROOT_DIR_SECTOR && strlen(file_name) == 0))
   {
 	free(file_name);
 	return (struct file *)dir;
   }
-  else if(file_name == "..")
+  else if(strcmp(file_name, "..")== 0)
   {
 	inode = inode_open(inode_get_parent(dir_get_inode(dir)));
 	free(file_name);
