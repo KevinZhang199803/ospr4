@@ -281,14 +281,17 @@ inode_close (struct inode *inode)
        /*   free_map_release (inode->data.start,
                             bytes_to_sectors (inode->data.length));*/
 		size_t sectors = bytes_to_sectors (inode->data.length);
-		int i = 0;
-		while (i < 10)
+		if (sectors)
 		{
-			free_map_release (inode->data.blocks[i], 1);
-			i++;
-			sectors--;
-			if(sectors == 0)
-				break;
+			int i = 0;
+			while (i < 10)
+			{
+				free_map_release (inode->data.blocks[i], 1);
+				i++;
+				sectors--;
+				if(sectors == 0)
+					break;
+			}
 		}
 		if (sectors)
 		{

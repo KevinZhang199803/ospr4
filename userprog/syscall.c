@@ -452,6 +452,12 @@ bool chdir (const char *cmdline)
 			free(file_name);
 			return false;
 		}
+		dir_close(dir);
+		dir = dir_open(inode);
+		dir_close(thread_current()->cudir);
+		thread_current()->cudir = dir;
+		free(file_name);
+		return true;
 	}
 	else
 	{
@@ -495,7 +501,7 @@ bool isdir (int fd)
 		return false;	
 
   	struct process_file *f = process_get_file(fd);
-	if(f = NULL)
+	if(f == NULL)
 		return false;
 	return f->isdir;
 }
@@ -506,7 +512,7 @@ int inumber (int fd)
 		return false;	
 
   	struct process_file *f = process_get_file(fd);
-	if(f = NULL)
+	if(f == NULL)
 		return false;
 	if(f->isdir)
 		return inode_get_inumber(dir_get_inode(f->dir));

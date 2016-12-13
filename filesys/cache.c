@@ -20,7 +20,7 @@ void init_cache ()
 	list_init (&cache_list);
 	lock_init (&cache_lock);
 	cache_size = 0;
-	thread_create ("write_behind", 0, write_behind, NULL);
+	thread_create ("write_behind", PRI_DEFAULT, write_behind, NULL);
 }
 
 struct cache *get_cache (block_sector_t sector)
@@ -97,7 +97,6 @@ void evict_cache ()
 		e = list_begin (&cache_list);
 	else
 		e = &clock_cache->elem;
-//	printf ("start_evict\n");
 	while (true)
 	{
 		c = list_entry (e, struct cache, elem);
@@ -106,16 +105,13 @@ void evict_cache ()
 			e = list_begin (&cache_list);
 		if (c->used)
 		{
-//			printf("used\n");
 		}
 		else if (c->accessed)
 		{
-//			printf("accessed\n");
 			c->accessed = false;
 		}
 		else
 		{
-//			printf("whatTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT\n");
 			if (c->dirty)
 			{
 				block_write (fs_device, c->sector, &c->data);
@@ -124,11 +120,9 @@ void evict_cache ()
 				list_remove (&c->elem);
 				free (c);
 				cache_size--;
-//				printf("end_evict\n");
 				return;			
 		}
 	}
-//	printf("end_evict\n");
 }
 
 void close_cache ()
@@ -152,14 +146,10 @@ void write_behind ()
 	struct cache *c;
 	while (true)
 	{
-//		printf ("start_write\n");
-		timer_sleep (300);
-//		printf ("end_sleep\n");
+		timer_sleep (600);
 		lock_acquire (&cache_lock);
-//		printf ("get lock\n");
 		for (e = list_begin (&cache_list); e != list_end (&cache_list); e = list_next (e))
 		{
-//			printf("writing...\n");
 			c = list_entry (e, struct cache, elem);
 			if (c->dirty)
 			{
@@ -169,7 +159,6 @@ void write_behind ()
 				
 		}
 		lock_release (&cache_lock);
-//		printf ("end_write\n");
 	}
 }
 
