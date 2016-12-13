@@ -19,7 +19,11 @@ off_t inode_write_at (struct inode *, const void *, off_t size, off_t offset);
 void inode_deny_write (struct inode *);
 void inode_allow_write (struct inode *);
 off_t inode_length (const struct inode *);
+void inode_extend (struct inode *, off_t length);
 
 bool inode_isdir(const struct inode *);
+int inode_get_cnt (const struct inode *inode);
+block_sector_t inode_get_parent(const struct inode *);
+bool inode_set_parent(block_sector_t child, block_sector_t parent);
 
 #endif /* filesys/inode.h */

@@ -150,7 +150,6 @@ syscall_handler (struct intr_frame *f UNUSED)
 	{
 		get_arg(f, &arg[0], 1);
 		check_valid_string((const void *) arg[0], f->esp);
-		//TODO:: checking arg[0]
 		f->eax = chdir((const char *)arg[0]); 
 		break;
 	}
@@ -158,14 +157,14 @@ syscall_handler (struct intr_frame *f UNUSED)
 	{
 		get_arg(f, &arg[0], 1);
 		check_valid_string((const void *) arg[0], f->esp);
-		//TODO:: implement make directory
+		f->eax = mkdir(arg[0]);
 		break;
 	}
 	case SYS_READDIR:
 	{
 		get_arg(f, &arg[0], 2);
 		check_valid_string((const void *) arg[1], f->esp);
-		//TODO:: implement read directory
+		f->eax = readdir(arg[0],arg[1]);
 		break;
 	}
 	case SYS_ISDIR:
@@ -292,10 +291,20 @@ int open (const char *file)
       lock_release(&filesys_lock);
       return ERROR;
     }
-  //TODO :: distinguish file and directory
-  int fd = process_add_file(f);
-  lock_release(&filesys_lock);
-  return fd;
+
+  //Distinguish file and directory
+  if(inode_isdir(f->inode))
+  {
+	int fd = process_add_dir((struct dir*)f);
+	lock_release(&filesys_lock);
+	return fd;
+  }
+  else
+  { 
+	int fd = process_add_file(f);
+	lock_release(&filesys_lock);
+	return fd;
+  }
 }
 
 int filesize (int fd)
@@ -332,7 +341,7 @@ int read (int fd, void *buffer, unsigned size)
     }
   lock_acquire(&filesys_lock);
   struct process_file *f = process_get_file(fd);
-  if (!f)
+   if (!f)
     {
       lock_release(&filesys_lock);
       return ERROR;
@@ -418,22 +427,66 @@ void close (int fd)
   lock_release(&filesys_lock);
 }
 
-bool chdir (const char *dir)
+bool chdir (const char *cmdline)
 {
-	//TODO
-	return false;
+	struct dir *dir = parse_dir(cmdline);
+	char* file_name = parse_file(cmdline);
+	struct inode *inode = NULL;
+
+	if(dir == NULL)
+	{
+		free(file_name);
+		return false;
+	}
+	else if(file_name == "." || (inode_get_inumber(dir_get_inode(dir))==ROOT_DIR_SECTOR && strlen(file_name) == 0))
+	{
+		thread_current()->cudir = dir;
+		free(file_name);	
+		return true;
+	}
+	else if(file_name == "..")
+	{
+		inode = inode_open(inode_get_parent(dir_get_inode(dir)));
+		if(inode == NULL)
+		{
+			free(file_name);
+			return false;
+		}
+	}
+	else
+	{
+		dir_lookup(dir, file_name, &inode);
+		dir_close(dir);
+		dir = dir_open(inode);
+		if(dir == NULL)
+		{
+			free(file_name);
+			return false;
+		}
+		dir_close(thread_current()->cudir);
+		thread_current()->cudir = dir;
+		free(file_name);
+		return true;	
+	}
 }
 
 bool mkdir (const char *dir)
 {
-	//TODO
-	return false;
+	return filesys_create(dir, 0, true);
 }
 
 bool readdir (int fd, char name[READDIR_MAX_LEN +1])
 {
-	//TODO
-	return false;
+	struct process_file *file = process_get_file(fd);
+	if(file==NULL)
+		return false;	
+	else if(!file->isdir)
+		return false;
+	bool success = dir_readdir(file->dir, name);
+	if(success)
+		return true;
+	else
+		return false;
 }
 
 bool isdir (int fd)

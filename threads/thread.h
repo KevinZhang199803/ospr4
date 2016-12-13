@@ -120,7 +120,7 @@ struct thread
 
     // Needed for denying writes to executables
     struct file* executable;
-	struct dir *cudir;	//save current directory
+    struct dir *cudir;	//save current directory
     struct hash spt;
 
     struct list mmap_list;
