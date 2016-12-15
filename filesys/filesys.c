@@ -239,7 +239,7 @@ filesys_remove (const char *name)
   free(file_name);
   return success;
 }
-
+
 /* Formats the file system. */
 static void
 do_format (void)

@@ -535,7 +535,11 @@ inode_extend (struct inode *inode, off_t length)
 	int i = sectors;
 	while (i < 10)
 	{
-		free_map_allocate (1, &inode->data.blocks[i]);
+		if(!free_map_allocate (1, &inode->data.blocks[i]))
+		{
+			inode->data.length = length - new_sectors*BLOCK_SECTOR_SIZE;
+			return;
+		}
 		block_write (fs_device, inode->data.blocks[i], zeros);
 		i++;
 		sectors++;
@@ -549,12 +553,23 @@ inode_extend (struct inode *inode, off_t length)
 	int j = sectors - 10;
 	struct indirect_block indirect_block;
 	if(j == 0)
-		free_map_allocate (1, &inode->data.blocks[10]);
+	{
+		if(!free_map_allocate (1, &inode->data.blocks[10]))
+		{
+			inode->data.length = length - new_sectors*BLOCK_SECTOR_SIZE;
+			return;
+		}
+	}
 	else
 		block_read (fs_device, inode->data.blocks[10], &indirect_block);
 	while (j < 128)
 	{
-		free_map_allocate (1, &indirect_block.blocks[j]);
+		if(!free_map_allocate (1, &indirect_block.blocks[j]))
+		{
+			inode->data.length = length - new_sectors*BLOCK_SECTOR_SIZE;
+			block_write (fs_device, inode->data.blocks[10], &indirect_block);
+			return;
+		}
 		block_write (fs_device, indirect_block.blocks[j], zeros);
 		j++;
 		sectors++;
@@ -572,18 +587,28 @@ inode_extend (struct inode *inode, off_t length)
 	struct indirect_block first_block;
 	struct indirect_block second_block;
 	if (k == 0 && l == 0)
-		free_map_allocate (1, &inode->data.blocks[11]);
+	{
+		if(!free_map_allocate (1, &inode->data.blocks[11]))
+		{
+			inode->data.length = length - new_sectors*BLOCK_SECTOR_SIZE;
+			return;
+		}
+	}
 	else
 		block_read (fs_device, inode->data.blocks[11], &first_block);
 	while (k < 128)
 	{
 		if (l == 0)
-			free_map_allocate (1, &first_block.blocks[k]);
+		{
+			if(!free_map_allocate (1, &first_block.blocks[k]))
+				break;
+		}
 		else
 			block_read (fs_device, first_block.blocks[k], &second_block);
 		while (l < 128)
 		{
-			free_map_allocate (1, &second_block.blocks[l]);
+			if(!free_map_allocate (1, &second_block.blocks[l]))
+				break;
 			block_write (fs_device, second_block.blocks[l], zeros);
 			l++;
 			new_sectors--;

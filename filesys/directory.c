@@ -31,8 +31,7 @@ dir_create (block_sector_t sector, size_t entry_cnt)
 
 /* Opens and returns the directory for the given INODE, of which
    it takes ownership.  Returns a null pointer on failure. */
-struct dir *
-dir_open (struct inode *inode) 
+struct dir *dir_open (struct inode *inode) 
 {
   struct dir *dir = calloc (1, sizeof *dir);
   if (inode != NULL && dir != NULL)
@@ -156,7 +155,7 @@ dir_add (struct dir *dir, const char *name, block_sector_t inode_sector)
   if (lookup (dir, name, NULL, NULL))
     goto done;
 
-  if(!inode_set_parent(inode_get_inumber(dir_get_inode(dir)),inode_sector))
+  if(!inode_set_parent(inode_sector, inode_get_inumber(dir_get_inode(dir))))
 	return false;
 
   /* Set OFS to offset of free slot.
@@ -197,6 +196,7 @@ dir_remove (struct dir *dir, const char *name)
 
  if(name == "." || name == "..")
 	return false;
+
   /* Find directory entry. */
   if (!lookup (dir, name, &e, &ofs))
     goto done;
@@ -205,11 +205,13 @@ dir_remove (struct dir *dir, const char *name)
   inode = inode_open (e.inode_sector);
   if (inode == NULL)
     goto done;
+  
   /* Checking Directory is available to delete */
   if(inode_isdir(inode))
   {
 	if(inode_get_cnt(inode)>=2)
 		goto done;
+
 	struct dir_entry e;
 	off_t offset;
 	int cnt = 0;
