@@ -59,10 +59,9 @@ struct cache *get_cache (block_sector_t sector)
 		clock_cache = c;
 	lock_release (&cache_lock);
 	return c;
-//	return make_cache (sector);
 }
 
-struct cache *make_cache (block_sector_t sector)
+/*struct cache *make_cache (block_sector_t sector)
 {
 	lock_acquire (&cache_lock);
 	struct cache *c;
@@ -87,7 +86,7 @@ struct cache *make_cache (block_sector_t sector)
 		clock_cache = c;
 	lock_release (&cache_lock);
 	return c;
-}
+}*/
 
 void evict_cache ()
 {

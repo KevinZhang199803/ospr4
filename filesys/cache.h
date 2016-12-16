@@ -12,7 +12,7 @@ struct cache
 };
 
 struct cache *get_cache (block_sector_t sector);
-struct cache *make_cache (block_sector_t sector);
+//struct cache *make_cache (block_sector_t sector);
 void evict_cache (void);
 void close_cache (void);
 void write_behind (void);
